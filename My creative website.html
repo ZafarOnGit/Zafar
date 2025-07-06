@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLI Program</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body { font-family: 'Roboto Mono', monospace; background: #000; color: #fff; display: flex; flex-flow: column; height: 100vh; margin: 0; overflow: hidden; transition: all .5s ease-in-out; }
+        #o::-webkit-scrollbar { display: none; } #o { -ms-overflow-style: none; scrollbar-width: none; }
+        .tb { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; /* @apply shadow-md; */ box-shadow: 0 1px 3px 0 rgba(0,0,0,0.2); }
+        .maximized-main { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 50; background: #000; display: flex; flex-direction: column; }
+        .cc { cursor:pointer; text-decoration:none; transition:color .2s; color:#0f0; }
+        .cc:hover, .cc:focus { color:#0ff; outline: none; }
+        #p { color:#00bfff; }
+        #i { color:#fff; caret-color:#fff; border-bottom: 1px solid #333; outline: none; transition: border .2s; }
+        #i:focus { border-bottom: 1.5px solid #00bfff; }
+        .red { color:#f87171; }
+        .yellow { color:#facc15; }
+        .fade { opacity:0; transition:opacity 5s ease-in-out; }
+        .fade.show { opacity:1; }
+        .blink { animation:blink 1.5s infinite alternate; }
+        @keyframes blink { from { opacity:1; } to { opacity:.4; } }
+    </style>
+</head>
+<body class="text-sm md:text-base lg:text-lg">
+    <header class="w-full bg-gray-800 text-gray-300 p-2 flex items-center justify-between shadow-lg sticky top-0 z-10">
+        <div class="flex space-x-2">
+            <div class="tb bg-red-500 hover:bg-red-600" aria-label="Close" tabindex="0"></div>
+            <div class="tb bg-yellow-500 hover:bg-yellow-600" aria-label="Minimize" tabindex="0"></div>
+            <div id="fullscreen-btn" class="tb bg-green-500 hover:bg-green-600" aria-label="Maximize" tabindex="0" title="Maximize"></div>
+        </div>
+        <span class="text-xs md:text-sm font-bold truncate">Terminal - My first program</span>
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+    </header>
+
+    <main class="flex-grow flex flex-col w-full h-full" id="main-terminal">
+        <div id="o" class="flex-grow p-4 overflow-y-auto" aria-live="polite"></div>
+        <div class="p-4 flex items-center bg-gray-900 border-t border-gray-700">
+            <span id="p" class="mr-2">&gt;</span>
+            <input type="text" id="i" class="flex-grow bg-transparent outline-none" autofocus autocomplete="off" spellcheck="false" aria-label="Command input">
+        </div>
+    </main>
+
+    <script>
+        const o = document.getElementById('o'), i = document.getElementById('i'), p = document.getElementById('p');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const mainTerminal = document.getElementById('main-terminal');
+
+        const cmds = {
+            'help': `For more information on a specific command, type HELP command-name
+
+<span class="cc" data-c="about" tabindex="0">about</span>        - This is the first program made by me, Zafar.
+<span class="cc" data-c="skills" tabindex="0">skills</span>       - See my technical skills.
+<span class="cc" data-c="projects" tabindex="0">projects</span>     - View my recent projects.
+<span class="cc" data-c="contact" tabindex="0">contact</span>      - Find out how to reach me.
+<span class="cc" data-c="github" tabindex="0">github</span>       - Open my GitHub profile.
+<span class="cc" data-c="linkedin" tabindex="0">linkedin</span>     - Open my LinkedIn profile.
+<span class="cc" data-c="clear" tabindex="0">clear</span>        - Clear the terminal screen.
+<span class="cc" data-c="help" tabindex="0">help</span>         - Display this help message.
+`,
+            'about': "This is the first program made by me, Zafar",
+            'skills': "My skills include: HTML, CSS, JavaScript (ES6+), React, Node.js, Python, Tailwind CSS, RESTful APIs, Git, and basic database management.",
+            'projects': "My recent projects include: This CLI Program, Keam Rank Predictor, and Thoughts to Journal App (In progress).",
+            'contact': "You can reach me via email at <span class=\"yellow\">contact@example.com</span>. Let's connect!",
+            'github': "Opening GitHub profile...",
+            'linkedin': "Opening LinkedIn profile...",
+            'clear': "",
+        };
+
+        // Sanitize user input for safe echo
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(tag) {
+                const chars = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'};
+                return chars[tag] || tag;
+            });
+        }
+
+        function addL(msg, isC = false) {
+            const el = document.createElement('p');
+            el.innerHTML = isC ? `<span style="color:#00bfff;">${p.textContent}</span> ${escapeHTML(msg)}` : msg;
+            o.append(el);
+            o.scrollTop = o.scrollHeight;
+            return el;
+        }
+
+        const init = () => {
+            const h = addL('Type <span class="cc" data-c="help" tabindex="0">\'help\'</span> to see available commands.');
+            h.querySelector('.cc[data-c="help"]')?.classList.add('blink');
+            h.classList.add('fade'); h.offsetHeight; h.classList.add('show');
+        };
+
+        const stopB = () => document.querySelectorAll('.cc.blink[data-c="help"]').forEach(s => s.classList.remove('blink'));
+
+        function execC(raw) {
+            const c = (raw || '').trim().toLowerCase();
+            if (!c) return;
+            addL(raw, true);
+            if (c === 'clear') {
+                o.innerHTML = ''; addL('Terminal cleared.');
+                setTimeout(() => { o.innerHTML = ''; init(); }, 2000);
+            } else if (cmds[c]) {
+                if (c === 'help') {
+                    stopB();
+                    const helpTextLines = cmds[c].split('\n');
+                    addL(helpTextLines[0]);
+                    addL('');
+                    for(let j = 2; j < helpTextLines.length; j++) {
+                        addL(helpTextLines[j]);
+                    }
+                } else {
+                    addL(cmds[c]);
+                }
+                if (c === 'github') window.open('https://github.com/yourusername', '_blank');
+                if (c === 'linkedin') window.open('https://linkedin.com/in/yourusername', '_blank');
+            } else {
+                addL(`Command not found: <span class="red">${escapeHTML(raw)}</span>. Type '<span class="cc" data-c="help" tabindex="0">help</span>' for a list of commands.`);
+            }
+        }
+
+        // Maximize/Minimize functionality
+        let maximized = false;
+        fullscreenBtn.addEventListener('click', () => {
+            maximized = !maximized;
+            if (maximized) {
+                mainTerminal.classList.add('maximized-main');
+                fullscreenBtn.setAttribute('title', 'Minimize');
+                fullscreenBtn.setAttribute('aria-label', 'Minimize');
+            } else {
+                mainTerminal.classList.remove('maximized-main');
+                fullscreenBtn.setAttribute('title', 'Maximize');
+                fullscreenBtn.setAttribute('aria-label', 'Maximize');
+            }
+        });
+
+        // Keyboard accessibility for .cc and fullscreen button
+        document.addEventListener('keydown', e => {
+            if (e.target.classList.contains('cc') && (e.key === 'Enter' || e.key === ' ')) {
+                execC(e.target.dataset.c);
+                e.preventDefault();
+            }
+            if (e.target === fullscreenBtn && (e.key === 'Enter' || e.key === ' ')) {
+                fullscreenBtn.click();
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { init(); i.focus(); });
+        i.addEventListener('keydown', e => e.key === 'Enter' && (execC(i.value), i.value = ''));
+        o.addEventListener('click', e => e.target.classList.contains('cc') && execC(e.target.dataset.c));
+        o.addEventListener('click', () => i.focus());
+    </script>
+</body>
+</html>
